@@ -12,7 +12,7 @@ import colorama; colorama.init()
 def main() -> None: 
     args = ParseArgs().args
 
-    with open(args.file, 'r') as f:
+    with open(args.file, 'r', encoding='utf-8') as f:
         code = f.read()
         Logging.success(f'Loaded file {args.file}')
 
@@ -24,7 +24,7 @@ def main() -> None:
     code = Methods.alias_strings()(code)
 
     
-    with open(args.output, 'w') as f:
+    with open(args.output, 'w', encoding='utf-8') as f:
         f.write(code)
         Logging.success(f'Wrote file {args.output}')
         
