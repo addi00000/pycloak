@@ -23,7 +23,6 @@ def main() -> None:
     code = Methods.alias_builtins(code)
     code = Methods.alias_strings()(code)
 
-    
     with open(args.output, 'w') as f:
         f.write(code)
         Logging.success(f'Wrote file {args.output}')
