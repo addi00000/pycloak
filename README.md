@@ -93,4 +93,4 @@ Feature additions and bug fixes/reports are welcome. Please open an issue or pul
 
 ## License
 
-This project is licensed under the AGPL License - see the `LICENSE.md` file for details.
+This project is licensed under the AGPL License - see the `LICENSE` file for details.
