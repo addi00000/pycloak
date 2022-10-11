@@ -186,7 +186,9 @@ class Logging:
         print(f'{colorama.Fore.BLUE}[INFO] {msg}{colorama.Style.RESET_ALL}')
     
     def debug(msg: str):
-        print(f'{colorama.Fore.YELLOW}[DEBUG] {msg}{colorama.Style.RESET_ALL}')
+        args = ParseArgs().args
+        if args.debug:
+            print(f'{colorama.Fore.YELLOW}[DEBUG] {msg}{colorama.Style.RESET_ALL}')
 
     def success(msg: str):
         print(f'{colorama.Fore.GREEN}[SUCCESS] {msg}{colorama.Style.RESET_ALL}')
@@ -199,6 +201,7 @@ class ParseArgs:
         self.parser = argparse.ArgumentParser(description='Obfuscate Python code')
         self.parser.add_argument('file', help='File to obfuscate')
         self.parser.add_argument('-o', '--output', help='Output file')
+        self.parser.add_argument('-d', '--debug', action='store_true', help='Enable debug logging')
         self.args = self.parser.parse_args()
 
         if not os.path.isfile(self.args.file):
