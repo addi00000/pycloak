@@ -66,6 +66,7 @@ JokfvKdcLrKTJOHoeMPaMeRQaoMajbLzegIKCvJeNSSXupXMHyTBUUuiBwlxiczflJAuqtqJjyGOjNci
 ```bash
 $ git clone https://github.com/addi00000/pycloak.git
 $ cd pycloak
+$ pip3 install -r requirements.txt
 $ python3 main.py -h
 ```
 ```
