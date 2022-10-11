@@ -70,17 +70,18 @@ $ pip3 install -r requirements.txt
 $ python3 main.py -h
 ```
 ```
-usage: main.py [-h] [-o OUTPUT] file
+usage: main.py [-h] [-o OUTPUT] [-d] file
 
 Obfuscate Python code
 
 positional arguments:
-file                  File to obfuscate
+  file                  File to obfuscate
 
 options:
--h, --help            show this help message and exit
--o OUTPUT, --output OUTPUT
+  -h, --help            show this help message and exit
+  -o OUTPUT, --output OUTPUT
                         Output file
+  -d, --debug           Enable debug logging
 ```
 
 ## Known Issues / Limitations
