@@ -18,7 +18,7 @@ def main() -> None:
 
     code = Methods.alias_constants(code)
     code = Methods.alias_funcs(code)
-    # code = Methods.alias_vars(code)
+    code = Methods.alias_vars(code)
     code = Methods.alias_imports(code)
     code = Methods.alias_builtins(code)
     code = Methods.alias_strings()(code)
@@ -27,6 +27,11 @@ def main() -> None:
     with open(args.output, 'w') as f:
         f.write(code)
         Logging.success(f'Wrote file {args.output}')
+        
+        
+class Utils:
+    def to_hex(string: str) -> str:
+        return '\\x' + '\\x'.join(hex(ord(c))[2:] for c in string)
         
 class Methods:
     def alias_builtins(code: str) -> str:
@@ -69,7 +74,7 @@ class Methods:
         tree = ast.parse(code)
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
-                alias = ''.join(random.choice(string.ascii_letters) for _ in range(99))
+                alias = ''.join(random.choice(string.ascii_letters) for _ in range(64))
                 aliases.append((node.name, alias))
                 Logging.debug(f'Aliased function \'{node.name}\' to \'{alias}\'')
                 node.name = alias
@@ -94,12 +99,12 @@ class Methods:
             if isinstance(node, ast.Assign):
                 if isinstance(node.targets[0], ast.Tuple):
                     for i, target in enumerate(node.targets[0].elts):
-                        alias = ''.join(random.choice(string.ascii_letters) for _ in range(99))
+                        alias = ''.join(random.choice(string.ascii_letters) for _ in range(64))
                         aliases.append((target.id, alias))
                         Logging.debug(f'Aliased variable \'{target.id}\' to \'{alias}\'')
                         node.targets[0].elts[i].id = alias
                 else:
-                    alias = ''.join(random.choice(string.ascii_letters) for _ in range(99))
+                    alias = ''.join(random.choice(string.ascii_letters) for _ in range(64))
                     aliases.append((node.targets[0].id, alias))
                     Logging.debug(f'Aliased variable \'{node.targets[0].id}\' to \'{alias}\'')
                     node.targets[0].id = alias
@@ -141,20 +146,20 @@ class Methods:
 
         for imp in imports:
             if isinstance(imp, tuple):
-                code = f'{imp[1]} = __builtins__.__dict__[\'__import__\'](\'{imp[0]}\').{imp[1]}\n' + code
+                code = f'{imp[1]} = __builtins__.__dict__[\'{Utils.to_hex("__import__")}\'](\'{imp[0]}\').{imp[1]}\n' + code
                 Logging.debug(f'Aliased import \'{imp[0]}.{imp[1]}\'')
             else:
-                code = f'{imp} = __builtins__.__dict__[\'__import__\'](\'{imp}\')\n' + code
+                code = f'{imp} = __builtins__.__dict__[\'{Utils.to_hex("__import__")}\'](\'{imp}\')\n' + code
                 Logging.debug(f'Aliased import \'{imp}\'')
 
         return code
 
     class alias_strings:
         def b64_encode(self, string: str) -> str:
-            return '__builtins__.__dict__[\'__import__\'](\'base64\').b64decode(b\'{}\').decode(\'utf-8\')'.format(base64.b64encode(string.encode('utf-8')).decode('utf-8'))
+            return '__builtins__.__dict__[\'{}\'](\'{}\').__dict__[\'{}\'](b\'{}\').decode(\'{}\')'.format(Utils.to_hex("__import__"), Utils.to_hex("base64"), Utils.to_hex("b64decode"), base64.b64encode(string.encode('utf-8')).decode('utf-8'), Utils.to_hex("utf-8"))
 
         def int_encode(self, num: int) -> str:
-            return f'(lambda x: x if x == {num} else x + 1)({num})'
+            return f'(lambda x:x if x=={num} else x+1)({num})'
 
         def barray_encode(self, string: str) -> str:
             return 'bytes([{}]).decode(\'utf-8\')'.format(', '.join([self.int_encode(ord(c)) for c in string]))
