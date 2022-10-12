@@ -6,6 +6,7 @@ import os
 import random
 import string
 import traceback
+from wsgiref.util import request_uri
 
 import colorama; colorama.init()
 
@@ -18,7 +19,8 @@ def main() -> None:
 
     code = Methods.alias_constants(code)
     code = Methods.alias_funcs(code)
-    # code = Methods.alias_vars(code)
+    code = Methods.alias_vars(code)
+    code = Methods.alias_iterators(code)
     code = Methods.alias_imports(code)
     code = Methods.alias_builtins(code)
     code = Methods.alias_strings()(code)
@@ -93,16 +95,16 @@ class Methods:
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign):
                 if isinstance(node.targets[0], ast.Tuple):
-                    for i, target in enumerate(node.targets[0].elts):
+                    for target in node.targets[0].elts:
                         alias = ''.join(random.choice(string.ascii_letters) for _ in range(99))
                         aliases.append((target.id, alias))
                         Logging.debug(f'Aliased variable \'{target.id}\' to \'{alias}\'')
-                        node.targets[0].elts[i].id = alias
-                else:
-                    alias = ''.join(random.choice(string.ascii_letters) for _ in range(99))
-                    aliases.append((node.targets[0].id, alias))
-                    Logging.debug(f'Aliased variable \'{node.targets[0].id}\' to \'{alias}\'')
-                    node.targets[0].id = alias
+                        target.id = alias
+
+                alias = ''.join(random.choice(string.ascii_letters) for _ in range(99))
+                aliases.append((node.targets[0].id, alias))
+                Logging.debug(f'Aliased variable \'{node.targets[0].id}\' to \'{alias}\'')
+                node.targets[0].id = alias
 
             elif isinstance(node, ast.AugAssign):
                 for alias in aliases:
@@ -116,6 +118,34 @@ class Methods:
                     if node.id == alias[0]:
                         node.id = alias[1]
                         Logging.debug(f'Aliased variable \'{alias[0]}\' to \'{alias[1]}\'')
+
+        return ast.unparse(tree)
+
+    def alias_iterators(code: str) -> str:
+        Logging.event('Aliasing iterators')
+
+        aliases = []
+        
+        tree = ast.parse(code)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.For):
+                if isinstance(node.target, ast.Tuple):
+                    for target in node.target.elts:
+                        alias = ''.join(random.choice(string.ascii_letters) for _ in range(99))
+                        aliases.append((target.id, alias))
+                        Logging.debug(f'Aliased iterator \'{target.id}\' to \'{alias}\'')
+                        target.id = alias
+                else:
+                    alias = ''.join(random.choice(string.ascii_letters) for _ in range(99))
+                    aliases.append((node.target.id, alias))
+                    Logging.debug(f'Aliased iterator \'{node.target.id}\' to \'{alias}\'')
+                    node.target.id = alias
+
+            elif isinstance(node, ast.Name):
+                for alias in aliases:
+                    if node.id == alias[0]:
+                        node.id = alias[1]
+                        Logging.debug(f'Aliased iterator \'{alias[0]}\' to \'{alias[1]}\'')
 
         return ast.unparse(tree)
 
@@ -154,7 +184,9 @@ class Methods:
             return '__builtins__.__dict__[\'__import__\'](\'base64\').b64decode(b\'{}\').decode(\'utf-8\')'.format(base64.b64encode(string.encode('utf-8')).decode('utf-8'))
 
         def int_encode(self, num: int) -> str:
-            return f'(lambda x: x if x == {num} else x + 1)({num})'
+            num = '+'.join([str(int(i) * (10 ** (len(str(num)) - (j + 1)))) for j, i in enumerate(str(num))])
+            char = random.choice(string.ascii_letters)
+            return '(lambda {char}: {char} + ({char} - {char}))({num})'.format(char=char, num=num)
 
         def barray_encode(self, string: str) -> str:
             return 'bytes([{}]).decode(\'utf-8\')'.format(', '.join([self.int_encode(ord(c)) for c in string]))
