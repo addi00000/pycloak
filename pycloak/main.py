@@ -1,14 +1,15 @@
-
 import argparse
 import ast
 import base64
+import builtins as __builtins__
+from inspect import Attribute
 import os
 import random
 import string
-import traceback
-from wsgiref.util import request_uri
 
 import colorama; colorama.init()
+
+__ALIASES__ = []
 
 def main() -> None: 
     args = ParseArgs().args
@@ -17,15 +18,19 @@ def main() -> None:
         code = f.read()
         Logging.success(f'Loaded file {args.file}')
 
-    code = Methods.alias_constants(code)
-    code = Methods.alias_funcs(code)
-    code = Methods.alias_vars(code)
-    code = Methods.alias_iterators(code)
-    code = Methods.alias_imports(code)
-    code = Methods.alias_builtins(code)
-    code = Methods.alias_strings()(code)
+    operations = [
+        Methods.alias_constants,
+        Methods.alias_funcs,
+        Methods.alias_vars,
+        Methods.alias_iterators,
+        Methods.alias_imports,
+        Methods.alias_builtins,
+        Methods.alias_strings(),
+    ]
 
-    
+    for operation in operations:
+        code = operation(code)
+
     with open(args.output, 'w', encoding='utf-8') as f:
         f.write(code)
         Logging.success(f'Wrote file {args.output}')
@@ -33,8 +38,8 @@ def main() -> None:
 class Methods:
     def alias_builtins(code: str) -> str:
         Logging.event('Aliasing builtins')
-        builtins = __builtins__.__dict__
-        
+        builtins = dir(__builtins__)
+
         tree = ast.parse(code)
         for node in ast.walk(tree):     
             if isinstance(node, ast.Name):
@@ -42,13 +47,16 @@ class Methods:
                     if not node.id.startswith('__'):
                         Logging.debug(f'Aliased builtin {node.id}')
                         node.id = f'__builtins__.__dict__[\'{node.id}\']'
+                    else :
+                        Logging.debug(f'Aliased builtin {node.id}')
+                        node.id = Methods.alias_builtins(f'eval(dir(__builtins__)[dir(__builtins__).index(\'{node.id}\')])')
 
         return ast.unparse(tree)
 
     def alias_constants(code: str) -> str:
         Logging.event('Aliasing constants')
 
-        aliases = {
+        __ALIASES__ = {
             'True': '(()==())',
             'False': '(()==[])',
             'None': '(lambda: None)()',
@@ -57,28 +65,26 @@ class Methods:
         tree = ast.parse(code)
         for node in ast.walk(tree):
             if isinstance(node, ast.Constant):
-                if repr(node.value) in aliases:
-                    code = code.replace(repr(node.value), aliases[repr(node.value)])
-                    Logging.debug(f'Aliased \'{node.value}\' to \'{aliases[repr(node.value)]}\'')
+                if repr(node.value) in __ALIASES__:
+                    code = code.replace(repr(node.value), __ALIASES__[repr(node.value)])
+                    Logging.debug(f'Aliased \'{node.value}\' to \'{__ALIASES__[repr(node.value)]}\'')
                     
         return code      
 
     def alias_funcs(code: str) -> str:
         Logging.event('Aliasing functions')
-
-        aliases = []
         
         tree = ast.parse(code)
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
-                alias = ''.join(random.choice(string.ascii_letters) for _ in range(99))
-                aliases.append((node.name, alias))
+                alias = '_' * 100 + '_' * len(__ALIASES__)
+                __ALIASES__.append((node.name, alias))
                 Logging.debug(f'Aliased function \'{node.name}\' to \'{alias}\'')
                 node.name = alias
 
 
             elif isinstance(node, ast.Call):
-                for alias in aliases:
+                for alias in __ALIASES__:
                     if isinstance(node.func, ast.Name):
                         if node.func.id == alias[0]:
                             node.func.id = alias[1]
@@ -88,61 +94,59 @@ class Methods:
 
     def alias_vars(code: str) -> str:
         Logging.event('Aliasing variables')
-
-        aliases = []
-        
+    
         tree = ast.parse(code)
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign):
-                if isinstance(node.targets[0], ast.Tuple):
-                    for target in node.targets[0].elts:
-                        alias = ''.join(random.choice(string.ascii_letters) for _ in range(99))
-                        aliases.append((target.id, alias))
+                for target in node.targets:
+                    if isinstance(target, ast.Attribute):
+                        continue
+
+                    if isinstance(target, ast.Subscript):
+                        continue
+
+                    if isinstance(target, ast.Tuple):
+                        for target in target.elts:
+                            alias = '_' * 100 + '_' * len(__ALIASES__)
+                            __ALIASES__.append((target.id, alias))
+                            Logging.debug(f'Aliased variable \'{target.id}\' to \'{alias}\'')
+                            target.id = alias
+
+                    else:
+                        alias = '_' * 100 + '_' * len(__ALIASES__)
+                        __ALIASES__.append((target.id, alias))
                         Logging.debug(f'Aliased variable \'{target.id}\' to \'{alias}\'')
                         target.id = alias
 
-                alias = ''.join(random.choice(string.ascii_letters) for _ in range(99))
-                aliases.append((node.targets[0].id, alias))
-                Logging.debug(f'Aliased variable \'{node.targets[0].id}\' to \'{alias}\'')
-                node.targets[0].id = alias
-
-            elif isinstance(node, ast.AugAssign):
-                for alias in aliases:
-                    if isinstance(node.target, ast.Name):
-                        if node.target.id == alias[0]:
-                            node.target.id = alias[1]
-                            Logging.debug(f'Aliased variable \'{alias[0]}\' to \'{alias[1]}\'')
-                        
             elif isinstance(node, ast.Name):
-                for alias in aliases:
+                for alias in __ALIASES__:
                     if node.id == alias[0]:
                         node.id = alias[1]
                         Logging.debug(f'Aliased variable \'{alias[0]}\' to \'{alias[1]}\'')
 
+            
         return ast.unparse(tree)
 
     def alias_iterators(code: str) -> str:
         Logging.event('Aliasing iterators')
-
-        aliases = []
         
         tree = ast.parse(code)
         for node in ast.walk(tree):
             if isinstance(node, ast.For):
                 if isinstance(node.target, ast.Tuple):
                     for target in node.target.elts:
-                        alias = ''.join(random.choice(string.ascii_letters) for _ in range(99))
-                        aliases.append((target.id, alias))
+                        alias = '_' * 100 + '_' * len(__ALIASES__)
+                        __ALIASES__.append((target.id, alias))
                         Logging.debug(f'Aliased iterator \'{target.id}\' to \'{alias}\'')
                         target.id = alias
                 else:
-                    alias = ''.join(random.choice(string.ascii_letters) for _ in range(99))
-                    aliases.append((node.target.id, alias))
+                    alias = '_' * 100 + '_' * len(__ALIASES__)
+                    __ALIASES__.append((node.target.id, alias))
                     Logging.debug(f'Aliased iterator \'{node.target.id}\' to \'{alias}\'')
                     node.target.id = alias
 
             elif isinstance(node, ast.Name):
-                for alias in aliases:
+                for alias in __ALIASES__:
                     if node.id == alias[0]:
                         node.id = alias[1]
                         Logging.debug(f'Aliased iterator \'{alias[0]}\' to \'{alias[1]}\'')
@@ -184,7 +188,12 @@ class Methods:
             return '__builtins__.__dict__[\'__import__\'](\'base64\').b64decode(b\'{}\').decode(\'utf-8\')'.format(base64.b64encode(string.encode('utf-8')).decode('utf-8'))
 
         def int_encode(self, num: int) -> str:
-            num = '+'.join([str(int(i) * (10 ** (len(str(num)) - (j + 1)))) for j, i in enumerate(str(num))])
+            equation = ''
+            while num > 0:
+                equation += str(random.randint(1, num)) + ' + '
+                num -= int(equation.split(' + ')[-2])
+            num = equation[:-3]
+
             char = random.choice(string.ascii_letters)
             return '(lambda {char}: {char} + ({char} - {char}))({num})'.format(char=char, num=num)
 
@@ -243,10 +252,3 @@ class ParseArgs:
         if not self.args.output:
             self.args.output = self.args.file + '.obf.py'
             Logging.info(f'No output file specified, using \'{self.args.output}\'')
-
-if __name__ == '__main__':
-    try:
-        main()
-    except Exception as e:
-        Logging.error(f'An error occured: {e}')
-        print(traceback.format_exc())
