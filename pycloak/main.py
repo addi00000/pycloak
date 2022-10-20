@@ -56,7 +56,7 @@ class Methods:
     def alias_constants(code: str) -> str:
         Logging.event('Aliasing constants')
 
-        __ALIASES__ = {
+        aliases = {
             'True': '(()==())',
             'False': '(()==[])',
             'None': '(lambda: None)()',
@@ -65,9 +65,9 @@ class Methods:
         tree = ast.parse(code)
         for node in ast.walk(tree):
             if isinstance(node, ast.Constant):
-                if repr(node.value) in __ALIASES__:
-                    code = code.replace(repr(node.value), __ALIASES__[repr(node.value)])
-                    Logging.debug(f'Aliased \'{node.value}\' to \'{__ALIASES__[repr(node.value)]}\'')
+                if repr(node.value) in aliases:
+                    code = code.replace(repr(node.value), aliases[repr(node.value)])
+                    Logging.debug(f'Aliased \'{node.value}\' to \'{aliases[repr(node.value)]}\'')
                     
         return code      
 
@@ -77,7 +77,7 @@ class Methods:
         tree = ast.parse(code)
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
-                alias = '_' * 100 + '_' * len(__ALIASES__)
+                alias = f'__{"".join(random.choices(string.digits, k=10))}__'
                 __ALIASES__.append((node.name, alias))
                 Logging.debug(f'Aliased function \'{node.name}\' to \'{alias}\'')
                 node.name = alias
@@ -107,13 +107,13 @@ class Methods:
 
                     if isinstance(target, ast.Tuple):
                         for target in target.elts:
-                            alias = '_' * 100 + '_' * len(__ALIASES__)
+                            alias = f'__{"".join(random.choices(string.digits, k=10))}__'
                             __ALIASES__.append((target.id, alias))
                             Logging.debug(f'Aliased variable \'{target.id}\' to \'{alias}\'')
                             target.id = alias
 
                     else:
-                        alias = '_' * 100 + '_' * len(__ALIASES__)
+                        alias = f'__{"".join(random.choices(string.digits, k=10))}__'
                         __ALIASES__.append((target.id, alias))
                         Logging.debug(f'Aliased variable \'{target.id}\' to \'{alias}\'')
                         target.id = alias
@@ -135,12 +135,12 @@ class Methods:
             if isinstance(node, ast.For):
                 if isinstance(node.target, ast.Tuple):
                     for target in node.target.elts:
-                        alias = '_' * 100 + '_' * len(__ALIASES__)
+                        alias = f'__{"".join(random.choices(string.digits, k=10))}__'
                         __ALIASES__.append((target.id, alias))
                         Logging.debug(f'Aliased iterator \'{target.id}\' to \'{alias}\'')
                         target.id = alias
                 else:
-                    alias = '_' * 100 + '_' * len(__ALIASES__)
+                    alias = f'__{"".join(random.choices(string.digits, k=10))}__'
                     __ALIASES__.append((node.target.id, alias))
                     Logging.debug(f'Aliased iterator \'{node.target.id}\' to \'{alias}\'')
                     node.target.id = alias
