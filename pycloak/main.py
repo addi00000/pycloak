@@ -2,7 +2,6 @@ import argparse
 import ast
 import base64
 import builtins as __builtins__
-from inspect import Attribute
 import os
 import random
 import string
@@ -209,6 +208,28 @@ class Methods:
                 if isinstance(node, ast.Str):
                     code = code.replace(repr(node.s), self.b64_encode(node.s))
                     Logging.debug(f'↳ Created Base64 encoding string \'{node.s}\'')
+
+            int_aliases = []
+            Logging.event('↳ Base64 encoding integers')
+            tree = ast.parse(code)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Num):
+                    Logging.debug(f'↳ Created Base64 encoding integer \'{node.n}\'')
+
+                    number = node.n
+                    temp = f'__TEMP__{"".join(random.choices(string.digits, k=10))}__'
+                    node.n = temp
+                    code = ast.unparse(tree)
+                    int_aliases.append((temp, number))
+
+            tree = ast.parse(code)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Str):
+                    if node.s in [i[0] for i in int_aliases]:
+                        for alias in int_aliases:
+                            if node.s == alias[0]:
+                                code = code.replace(repr(node.s), f'int({self.b64_encode(str(alias[1]))})')
+                                Logging.debug(f'↳ Aliased integer \'{alias[1]}\' to \'{node.s}\'')
             
             Logging.event('↳ Creating byte arrays')
             tree = ast.parse(code)
