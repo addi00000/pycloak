@@ -6,7 +6,7 @@ import os
 import random
 import string
 
-import colorama; colorama.init()
+import colorama; colorama.init(convert=True)
 
 __ALIASES__ = []
 
