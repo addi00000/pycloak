@@ -97,6 +97,7 @@ options:
 * String obfuscation follows a simple pattern, which can be easily reversed by a program though it may still be tedious.
 * F-strings are not supported.
 * Tuples are not supported.
+* Variable names within list comprehensions are not supported
 
 ## Contributing
 
